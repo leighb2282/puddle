@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # puddle.py
 # Simple Weather App
-# Version v00.00.02
-# Thu 29 Oct 2015 22:48:32 
+# Version v00.00.05
+# Fri 30 Oct 2015 17:07:17 
 # Leigh Burton, lburton@metacache.net
 
 
@@ -11,7 +11,7 @@ import urllib2
 from xml.dom.minidom import parse
 import xml.dom.minidom
 import os.path
-import wx      # wxPython
+import wx
 
 zippy = "94101"
 namechk = zippy + ".xml"
@@ -39,10 +39,11 @@ def main():
             global apifetch
             global namechk
 
-            wx.Frame.__init__(self, parent, title=title, size=(390,320)) # Init the frame with a size of 390x120 pixels.
+            wx.Frame.__init__(self, parent, title=title, size=(460,180)) # Init the frame with a size of 390x120 pixels.
             self.Bind(wx.EVT_CLOSE, self.OnClose)
             menuBar = wx.MenuBar()
-        
+            self.ficon = wx.Icon("ficon.ico", wx.BITMAP_TYPE_ICO)
+            self.SetIcon(self.ficon)
             # Define the File Menu.
             f_menu = wx.Menu()    
             self.m_exit = f_menu.Append(wx.ID_EXIT, "E&xit\tAlt-X", "Close window and exit program.")         
@@ -54,11 +55,19 @@ def main():
             # Define the Status Bar
             self.statusbar = self.CreateStatusBar()
             self.ziplabel = wx.StaticText(panel, label="Location: ", pos=(10, 15)) # Zip/Country:city label
-            self.zipbox = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(300, 30), pos=(80, 10)) # Username Textbox
-            self.fetch = wx.Button(panel, label="Get Weather Information", pos=(10, 50)) # Add a button
+            self.zipbox = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(250, 30), pos=(70, 10))
+            self.fetch = wx.Button(panel, label="Fetch Weather", pos=(330, 10)) # Add a button
             self.Bind(wx.EVT_BUTTON, self.apilookup, self.fetch) # give is meaning
+
+            self.line1label1 = wx.StaticText(panel, label="", pos=(60, 40)) # City
+            self.line2label1 = wx.StaticText(panel, label="", pos=(60, 60)) # Zip
+            self.line3label1 = wx.StaticText(panel, label="", pos=(60, 80)) # Latitude
+            self.line4label1 = wx.StaticText(panel, label="", pos=(60, 100)) # Longitude
+            img = wx.EmptyImage(50,50)
+            self.icono = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(img), pos=(6, 55))
         
-            
+            self.apilookup(zippy)
+            self.zipbox.SetValue(zippy)
             panel.Layout()
             self.Show(True) # show shit!
 
@@ -77,10 +86,10 @@ def main():
             
             validator = str(self.zipbox.GetValue())
             if str(validator) == "" or str(validator) == "":
-                print "Using Default Value of " + namechk.split(".")[0]
+                self.zipbox.SetValue(zippy)
+                namechk = str(zippy + ".xml")
             else:
-                namechk = str(validator) + ".xml"
-                print "Using User Defined value of " + str(validator)
+                namechk = str(validator + ".xml") 
             try:
                 apifetch = "http://api.wunderground.com/api/6d38851d6740fcff/conditions/lang:EN/q/" + str(namechk)
                 apigrab = urllib2.urlopen(apifetch)
@@ -111,21 +120,31 @@ def main():
                     apitemp = apidet.getElementsByTagName('temperature_string')[0]
                     apiwind = apidet.getElementsByTagName('wind_string')[0]
                     apifeels = apidet.getElementsByTagName('feelslike_string')[0]
-                    apiconurl = apidet.getElementsByTagName('icon_url')[0]
+                    apiiconurl = apidet.getElementsByTagName('icon_url')[0]
                     apiupdated = apidet.getElementsByTagName('observation_time')[0]
                     apitime = apidet.getElementsByTagName('local_time_rfc822')[0]
 
                     temp = apitemp.childNodes[0].data
                     wind = apiwind.childNodes[0].data
                     feels = apifeels.childNodes[0].data
-                    giffy = apiconurl.childNodes[0].data
+                    giffy = apiiconurl.childNodes[0].data
                     uptime = apiupdated.childNodes[0].data
                     localtime = apitime.childNodes[0].data
-                    print str(city) + "(" + str(zipcode) + "), Lat: " + str(lat) + " Long: " + str(lon)
-                    print "Temp: " + str(temp) + ", Feels like: " + str(feels)
-                    print "Wind " + str(wind)
-                    print str(uptime)
-                    print ""
+
+                    icongrab = urllib2.urlopen(giffy)
+                    iconfetch = icongrab.read()
+                    with open("icono.gif", 'wb') as iconfile:
+                        iconfile.write(iconfetch)
+                        iconfile.close()
+                    
+                    self.line1label1.SetLabel(str(city) + " (" + str(zipcode) + "), Lat: " + str(lat) + " Long: " + str(lon))
+                    self.line2label1.SetLabel("Temp: " + str(temp) + ", Feels like: " + str(feels))
+                    self.line3label1.SetLabel("Wind " + str(wind))
+                    self.line4label1.SetLabel(str(uptime))
+                    img = wx.Image("icono.gif", wx.BITMAP_TYPE_GIF)
+                    self.icono.SetBitmap(wx.BitmapFromImage(img))
+                    os.remove("icono.gif")
+                    os.remove("datafile.xml")
                     break
             except:
                 print "Unexpected error."
@@ -138,11 +157,8 @@ def main():
             dlg.Destroy()
             if result == wx.ID_OK:
                 self.Destroy() # GUI dedded :(
-                print "\033[91mApp killed by File|Exit or App's 'x' button"
+                #print "\033[91mApp killed by File|Exit or App's 'x' button"
                 sys.exit() # App dedded :(
-            else:
-                print "\033[93mUser chose not to close the encoder."
-        
 
     app = wx.App(False)
     frame = puddle(None, 'Puddle Weather Display')
