@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # puddle.py
 # Simple Weather App
-# Version v00.00.10
-# Sat 07 Nov 2015 11:43:21 
+# Version v00.00.16
+# Thu 12 Nov 2015 01:15:05 
 # Leigh Burton, lburton@metacache.net
 
 
@@ -14,25 +14,23 @@ import os.path
 import wx
 
 
+from ConfigParser import SafeConfigParser
 
-##############################
-# Default Locations Settings #
-# Ideally Imported from File #
-##############################
-
-# Location 1
-zippy1def = "94101"
-zippy1 = zippy1def
-namechk1 = zippy1 + ".xml"
-# Location 2
-zippy2def = "10001"
-zippy2 = zippy2def
-namechk2 = zippy2 + ".xml"
-# Location 3
-zippy3def = "GB/London"
-zippy3 = zippy3def
-namechk3 = zippy3 + ".xml"
-
+settings_button = "res/settings_button.png"
+refresh_button = "res/refresh_button.png"
+appicon = "res/ficon.ico"
+conffile = "res/config.ini"
+wunderlogo = "res/wlogo.png"
+puddlelogo = "res/plogo.png"
+vinfo = "v00.00.15"
+zippy1 = ""
+zippy2 = ""
+zippy3 = ""
+zippy1def = ""
+zippy2def = ""
+zippy3def = ""
+apikey = ""
+emailer = ""
 zipcode = ""
 city = ""
 lat = ""
@@ -43,28 +41,100 @@ feels = ""
 giffy = ""
 uptime = ""
 localtime = ""
-settings_button = "res/settings_button.png"
-refresh_button = "res/refresh_button.png"
-appicon = "res/ficon.ico"
+
+##############################
+# Default Locations Settings #
+##############################
+try:
+    config = SafeConfigParser()
+    config.read(conffile)
+
+    apikey = config.get('main', 'apikey')
+    zippy1def = config.get('main', 'location_1')
+    zippy2def = config.get('main', 'location_2')
+    zippy3def = config.get('main', 'location_3')
+    emailer = config.get('main', 'email')
+
+    # Location 1
+    zippy1 = zippy1def
+    namechk1 = zippy1 + ".xml"
+    # Location 2
+    zippy2 = zippy2def
+    namechk2 = zippy2 + ".xml"
+    # Location 3
+    zippy3 = zippy3def
+    namechk3 = zippy3 + ".xml"
+
+    apistring = "http://api.wunderground.com/api/" + apikey + "/conditions/lang:EN/q/"
+
+except:
+    print "Issue with Config file, no defaults loaded."    
 
 def main():
     """ Main entry point for the script."""
     global apifetch
     global namechk
-    
+
+
+    #####################
+    # Preferences Frame #
+    #####################
     class PreferenceFrame(wx.Frame):
         ''' PreferenceFrame launched from puddle '''
         def __init__(self, parent, id):
             wx.Frame.__init__(self, parent, -1,
                               title="Puddle Preferences",
-                              size=(300,150),
+                              size=(300,270),
                               style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER ^ wx.MINIMIZE_BOX ^ wx.MAXIMIZE_BOX)
-
+            self.picon = wx.Icon(appicon, wx.BITMAP_TYPE_ICO)
+            self.SetIcon(self.picon)
             panel = wx.Panel(self, -1)
-            closeButton = wx.Button(panel, label="Close Me")
 
-            self.Bind(wx.EVT_BUTTON, self.__onClose, id=closeButton.GetId())
-            self.Bind(wx.EVT_CLOSE, self.__onClose) # (Allows frame's title-bar close to work)
+            self.apilabel = wx.StaticText(panel, label="API Key: ", pos=(15, 15)) # API Label
+            self.apibox = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(200, 30), pos=(80, 10)) # API Textbox
+
+            self.eline1 = wx.StaticLine(panel, pos=(0,50), size=(300, 4), style=wx.LI_HORIZONTAL)
+
+            self.defloclabel = wx.StaticText(panel, label="Default Locations", pos=(10, 60)) # Def Loc label + [R]
+            self.defloclabel2 = wx.StaticText(panel, label="[R]", pos=(233, 60)) # Def Loc label + [R]
+
+            self.loc1label = wx.StaticText(panel, label="Location 1: ", pos=(10, 85)) # Location 1 Label
+            self.loc1box = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(150, 30), pos=(80, 80)) # Location 1 Textbox
+            self.l1act_check = wx.CheckBox(panel, label="", pos=(230,84))
+
+            self.loc2label = wx.StaticText(panel, label="Location 2: ", pos=(10, 115)) # Location 2 Label
+            self.loc2box = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(150, 30), pos=(80, 110)) # Location 2 Textbox
+            self.l2act_check = wx.CheckBox(panel, label="", pos=(230,114))
+
+            self.loc3label = wx.StaticText(panel, label="Location 3: ", pos=(10, 145)) # Location 3 Label
+            self.loc3box = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(150, 30), pos=(80, 140)) # Location 3 Textbox
+            self.l3act_check = wx.CheckBox(panel, label="", pos=(230,144))
+
+            self.eline2 = wx.StaticLine(panel, pos=(0,179), size=(300, 4), style=wx.LI_HORIZONTAL)
+
+            self.emaillabel = wx.StaticText(panel, label="Email: ", pos=(10, 195)) # Email Label
+            self.emailbox = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(200, 30), pos=(80, 190)) # Email Textbox
+
+            self.eline3 = wx.StaticLine(panel, pos=(0,227), size=(300, 4), style=wx.LI_HORIZONTAL)
+
+            self.applyButton = wx.Button(panel, label="Apply", pos=(10, 235))
+            self.cancelButton = wx.Button(panel, label="Cancel", pos=(100, 235))
+
+            self.Bind(wx.EVT_BUTTON, self.onApply, self.applyButton)
+            self.Bind(wx.EVT_BUTTON, self.onClose, self.cancelButton)
+            self.Bind(wx.EVT_CLOSE, self.onClose) # (Allows frame's title-bar close to work)
+
+            # Disabled controls because no functionality
+            self.l1act_check.Enable(False)
+            self.l2act_check.Enable(False)
+            self.l3act_check.Enable(False)
+            self.emailbox.Enable(False)
+
+            self.apibox.SetValue(apikey)
+            self.loc1box.SetValue(str(zippy1def))
+            self.loc2box.SetValue(str(zippy2def))
+            self.loc3box.SetValue(str(zippy3def))
+            self.emailbox.SetValue(emailer)
 
             self.CenterOnParent()
             self.GetParent().Enable(False)
@@ -72,12 +142,132 @@ def main():
 
             self.__eventLoop = wx.EventLoop()
             self.__eventLoop.Run()
-        def __onClose(self, event):
+
+        def onClose(self, event):
             self.GetParent().Enable(True)
             self.__eventLoop.Exit()
             self.Destroy()
 
+        def onApply(self, event):
+            global apikey
+            global zippy1def
+            global zippy2def
+            global zippy3def
+            global emailer
+            global apistring
+            global conffile
+
+            apikey = self.apibox.GetValue()
+            zippy1def = self.loc1box.GetValue()
+            zippy2def = self.loc2box.GetValue()
+            zippy3def = self.loc3box.GetValue()
+            emailer = self.emailbox.GetValue()
+            apistring = "http://api.wunderground.com/api/" + apikey + "/conditions/lang:EN/q/"
+            
+            try:
+                os.remove(conffile)
+            except:
+                print "No previosu config file, creating new one."
+
+            config = SafeConfigParser()
+            config.read(conffile)
+            config.add_section('main')
+            config.set('main', 'apikey', apikey)
+            config.set('main', 'location_1', zippy1def)
+            config.set('main', 'location_2', zippy2def)
+            config.set('main', 'location_3', zippy3def)
+            config.set('main', 'email', emailer)
+            
+            with open(conffile, 'w') as f:
+                config.write(f)
+            self.GetParent().Enable(True)
+            self.__eventLoop.Exit()
+            self.Destroy()
+
+    #####################
+    # About Frame #
+    #####################
+    class AboutFrame(wx.Frame):
+        ''' AboutFrame launched from puddle '''
+        def __init__(self, parent, id):
+            wx.Frame.__init__(self, parent, -1,
+                              title="About Puddle",
+                              style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER ^ wx.MINIMIZE_BOX ^ wx.MAXIMIZE_BOX)
+            self.picon = wx.Icon(appicon, wx.BITMAP_TYPE_ICO)
+            self.SetIcon(self.picon)
+            panel = wx.Panel(self, -1)
+            plogo = wx.EmptyImage(64,64)
+            plogo = wx.Image(puddlelogo, wx.BITMAP_TYPE_PNG)
+            self.pudd = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(plogo))
+
+            self.titlelabel = wx.StaticText(panel, label="Puddle " + vinfo)
+            titleFont = wx.Font(20, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
+            self.titlelabel.SetFont(titleFont)
+
+            self.blurb1label = wx.StaticText(panel, label=" Puddle is a simple weather broadcast application. ")
+            self.blurb2label = wx.StaticText(panel, label="Uses Weather Underground API data.") # blurb1 Label
+            blurbFont = wx.Font(10, wx.DECORATIVE, wx.NORMAL, wx.NORMAL)
+            self.blurb1label.SetFont(blurbFont)
+            self.blurb2label.SetFont(blurbFont)
+
+            self.copyrlabel = wx.StaticText(panel, label="Copyright 2015 Leigh Burton") # copyright Label
+            copyFont = wx.Font(8, wx.DECORATIVE, wx.NORMAL, wx.NORMAL)
+            self.copyrlabel.SetFont(copyFont)
+
+            #Weather Underground Logo
+            wlogo = wx.EmptyImage(200,47)
+            wlogo = wx.Image(wunderlogo, wx.BITMAP_TYPE_PNG)
+            self.wunder = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(wlogo))
+
+            self.closeButton = wx.Button(panel, label="Close", pos=(210, 235))
+
+            self.Bind(wx.EVT_BUTTON, self.onClose, self.closeButton)
+            self.Bind(wx.EVT_CLOSE, self.onClose) # (Allows frame's title-bar close to work)
+
+            topSizer        = wx.BoxSizer(wx.VERTICAL)
+            iconSizer      = wx.BoxSizer(wx.HORIZONTAL)
+            appverSizer   = wx.BoxSizer(wx.HORIZONTAL)
+            blurb1Sizer   = wx.BoxSizer(wx.VERTICAL)
+            blurb2Sizer   = wx.BoxSizer(wx.VERTICAL)
+            copySizer   = wx.BoxSizer(wx.HORIZONTAL)
+            wunderSizer   = wx.BoxSizer(wx.HORIZONTAL)
+            btnSizer        = wx.BoxSizer(wx.HORIZONTAL)
+
+            iconSizer.Add(self.pudd, 0, wx.ALL, 5)
+            appverSizer.Add(self.titlelabel, 0, wx.ALL, 5)
+            blurb1Sizer.Add(self.blurb1label, 0, wx.ALL, 0)
+            blurb2Sizer.Add(self.blurb2label, 0, wx.ALL, 0)
+            copySizer.Add(self.copyrlabel, 0, wx.ALL, 5)
+            wunderSizer.Add(self.wunder, 0, wx.ALL, 5)
+            btnSizer.Add(self.closeButton, 0, wx.ALL, 5)
+
+            topSizer.Add(iconSizer, 0, wx.CENTER)
+            topSizer.Add(appverSizer, 0, wx.CENTER, 5)
+            topSizer.Add(blurb1Sizer, 0, wx.CENTER, 5)
+            topSizer.Add(blurb2Sizer, 0, wx.CENTER, 5)
+            topSizer.Add(copySizer, 0, wx.CENTER, 5)
+            topSizer.Add(wunderSizer, 0, wx.LEFT, 5)
+            topSizer.Add(btnSizer, 0, wx.ALIGN_RIGHT, 5)
+            panel.SetSizer(topSizer)
+            topSizer.Fit(self)
+            self.CenterOnParent()
+            self.GetParent().Enable(False)
+            self.Show(True)
+
+            self.__eventLoop = wx.EventLoop()
+            self.__eventLoop.Run()
+
+        def onClose(self, event):
+            self.GetParent().Enable(True)
+            self.__eventLoop.Exit()
+            self.Destroy()
+            
+
     # Start of GUI happiness
+
+    #####################
+    # Main App Frame    #
+    #####################
     class puddle(wx.Frame):
         def __init__(self, parent, title):
             global apifetch
@@ -100,13 +290,16 @@ def main():
             # Define the Edit Menu
             e_menu = wx.Menu()    
             self.e_pref = e_menu.Append(wx.ID_PROPERTIES, "&Preferences", "Set Puddle Preferences.")
+            self.e_default = e_menu.Append(wx.ID_REFRESH, "&Default Locations", "Return to Default View.")
             self.Bind(wx.EVT_MENU, self.OnEditPref, self.e_pref)
+            self.Bind(wx.EVT_MENU, self.OnEditDef, self.e_default)
             menuBar.Append(e_menu, "&Edit")
   
             # Define the Help Menu
             h_menu = wx.Menu()    
             self.m_about = h_menu.Append(wx.ID_ABOUT, "About", "About Puddle.")
-            self.m_faq = h_menu.Append(wx.ID_ABOUT, "FAQ & Tips", "FAQ & Tips.")
+            self.m_faq = h_menu.Append(wx.ID_ABOUT, "FAQ / Tips", "FAQ and Tips on Usage.")
+            self.Bind(wx.EVT_MENU, self.OnAbout, self.m_about)
             menuBar.Append(h_menu, "&Help")
 
             self.SetMenuBar(menuBar)
@@ -132,9 +325,9 @@ def main():
 
             self.eline1 = wx.StaticLine(panel, pos=(0,110), size=(460, 4), style=wx.LI_HORIZONTAL)
 
-            #self.refresh1.Bind(wx.EVT_ENTER_WINDOW, self.rOnMouseOver) #Hover On Refresh
+            #self.refresh1.Bind(wx.EVT_ENTER_WINDOW, self.rOnMouseOver1) #Hover On Refresh
             #self.refresh1.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Refresh
-            #self.settings1.Bind(wx.EVT_ENTER_WINDOW, self.sOnMouseOver) #Hover On Settings
+            #self.settings1.Bind(wx.EVT_ENTER_WINDOW, self.sOnMouseOver1) #Hover On Settings
             #self.settings1.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Settings
             self.Bind(wx.EVT_BUTTON, self.apilookup1, self.refresh1) # Refresh Location
             self.Bind(wx.EVT_BUTTON, self.locset1, self.settings1) # Location Settings
@@ -153,9 +346,9 @@ def main():
 
             self.eline2 = wx.StaticLine(panel, pos=(0,220), size=(460, 4), style=wx.LI_HORIZONTAL)
 
-            #self.refresh2.Bind(wx.EVT_ENTER_WINDOW, self.rOnMouseOver) #Hover On Refresh
+            #self.refresh2.Bind(wx.EVT_ENTER_WINDOW, self.rOnMouseOver2) #Hover On Refresh
             #self.refresh2.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Refresh
-            #self.settings2.Bind(wx.EVT_ENTER_WINDOW, self.sOnMouseOver) #Hover On Settings
+            #self.settings2.Bind(wx.EVT_ENTER_WINDOW, self.sOnMouseOver2) #Hover On Settings
             #self.settings2.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Settings
             self.Bind(wx.EVT_BUTTON, self.apilookup2, self.refresh2) # give is meaning
             self.Bind(wx.EVT_BUTTON, self.locset2, self.settings2) # give is meaning
@@ -174,9 +367,9 @@ def main():
 
             self.eline3 = wx.StaticLine(panel, pos=(0,330), size=(460, 4), style=wx.LI_HORIZONTAL)
 
-            #self.refresh3.Bind(wx.EVT_ENTER_WINDOW, self.rOnMouseOver) #Hover On Refresh
+            #self.refresh3.Bind(wx.EVT_ENTER_WINDOW, self.rOnMouseOver3) #Hover On Refresh
             #self.refresh3.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Refresh
-            #self.settings3.Bind(wx.EVT_ENTER_WINDOW, self.sOnMouseOver) #Hover On Settings
+            #self.settings3.Bind(wx.EVT_ENTER_WINDOW, self.sOnMouseOver3) #Hover On Settings
             #self.settings3.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Settings
             self.Bind(wx.EVT_BUTTON, self.apilookup3, self.refresh3) # give is meaning
             self.Bind(wx.EVT_BUTTON, self.locset3, self.settings3) # give is meaning
@@ -201,6 +394,30 @@ def main():
         def OnEditPref(self,event):
             dialog = PreferenceFrame(self, -1)
 
+        # Help>About
+        def OnAbout(self,event):
+            dialog = AboutFrame(self, -1)
+
+        # Edit>Default
+        def OnEditDef(self,event):
+            global zippy1
+            global zippy2
+            global zippy3
+            global zippy1def
+            global zippy2def
+            global zippy3def
+
+            # Location 1
+            zippy1 = zippy1def
+            # Location 2
+            zippy2 = zippy2def
+            # Location 3
+            zippy3 = zippy3def
+
+            self.apilookup1(zippy1)
+            self.apilookup2(zippy2)
+            self.apilookup3(zippy3)
+            
 
         #Location 1 Settings Button
         def locset1(self,event):
@@ -288,6 +505,7 @@ def main():
             global giffy
             global uptime
             global localtime
+            global apikey
 
             if str(zippy1) == "":
                 namechk1 = str(zippy1def + ".xml")
@@ -295,7 +513,7 @@ def main():
                 namechk1 = str(zippy1 + ".xml") 
 
             try:
-                apifetch = "http://api.wunderground.com/api/6d38851d6740fcff/conditions/lang:EN/q/" + str(namechk1)
+                apifetch = str(apistring) + str(namechk1)
                 apigrab = urllib2.urlopen(apifetch)
                 apixml = apigrab.read()
                 with open("datafile1.xml", 'wb') as newfile:
@@ -352,7 +570,7 @@ def main():
                     os.remove("datafile1.xml")
                     break
             except:
-                print "Unexpected error."
+                print "No Location Data, config file missing?"
 
         # Location 2 Lookup Function
         def apilookup2(self,event):
@@ -374,7 +592,7 @@ def main():
                 namechk2 = str(zippy2 + ".xml") 
 
             try:
-                apifetch = "http://api.wunderground.com/api/6d38851d6740fcff/conditions/lang:EN/q/" + str(namechk2)
+                apifetch = str(apistring) + str(namechk2)
                 apigrab = urllib2.urlopen(apifetch)
                 apixml = apigrab.read()
                 with open("datafile2.xml", 'wb') as newfile:
@@ -431,7 +649,7 @@ def main():
                     os.remove("datafile2.xml")
                     break
             except:
-                print "Unexpected error."
+                print "No Location Data, config file missing?"
 
         # Location 3 Lookup Function
         def apilookup3(self,event):
@@ -453,7 +671,7 @@ def main():
                 namechk3 = str(zippy3 + ".xml") 
 
             try:
-                apifetch = "http://api.wunderground.com/api/6d38851d6740fcff/conditions/lang:EN/q/" + str(namechk3)
+                apifetch = str(apistring) + str(namechk3)
                 apigrab = urllib2.urlopen(apifetch)
                 apixml = apigrab.read()
                 with open("datafile3.xml", 'wb') as newfile:
@@ -510,7 +728,7 @@ def main():
                     os.remove("datafile3.xml")
                     break
             except:
-                print "Unexpected error."
+                print "No Location Data, config file missing?"
 
         def OnClose(self,event):
             dlg = wx.MessageDialog(self, 
