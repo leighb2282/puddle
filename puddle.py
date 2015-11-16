@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # puddle.py
 # Simple Weather App
-# Version v00.00.16
-# Thu 12 Nov 2015 01:15:05 
+# Version v00.00.19
+# Mon 16 Nov 2015 13:50:38 
 # Leigh Burton, lburton@metacache.net
 
 
@@ -22,7 +22,7 @@ appicon = "res/ficon.ico"
 conffile = "res/config.ini"
 wunderlogo = "res/wlogo.png"
 puddlelogo = "res/plogo.png"
-vinfo = "v00.00.15"
+vinfo = "v00.00.19"
 zippy1 = ""
 zippy2 = ""
 zippy3 = ""
@@ -80,61 +80,105 @@ def main():
     # Preferences Frame #
     #####################
     class PreferenceFrame(wx.Frame):
+
         ''' PreferenceFrame launched from puddle '''
         def __init__(self, parent, id):
             wx.Frame.__init__(self, parent, -1,
                               title="Puddle Preferences",
-                              size=(300,270),
                               style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER ^ wx.MINIMIZE_BOX ^ wx.MAXIMIZE_BOX)
             self.picon = wx.Icon(appicon, wx.BITMAP_TYPE_ICO)
             self.SetIcon(self.picon)
-            panel = wx.Panel(self, -1)
+            panel = wx.Panel(self,wx.ID_ANY)
 
-            self.apilabel = wx.StaticText(panel, label="API Key: ", pos=(15, 15)) # API Label
-            self.apibox = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(200, 30), pos=(80, 10)) # API Textbox
+            self.apilabel = wx.StaticText(panel, label="API Key: ") # API Label
+            self.apibox = wx.TextCtrl(panel, style=wx.TE_LEFT,) # API Textbox
 
-            self.eline1 = wx.StaticLine(panel, pos=(0,50), size=(300, 4), style=wx.LI_HORIZONTAL)
+            self.loc1label = wx.StaticText(panel, label="Location 1: ") # Location 1 Label
+            self.loc1box = wx.TextCtrl(panel, style=wx.TE_LEFT) # Location 1 Textbox
+            self.l1usecur_check = wx.CheckBox(panel, label="Use Current                ")
 
-            self.defloclabel = wx.StaticText(panel, label="Default Locations", pos=(10, 60)) # Def Loc label + [R]
-            self.defloclabel2 = wx.StaticText(panel, label="[R]", pos=(233, 60)) # Def Loc label + [R]
+            self.loc2label = wx.StaticText(panel, label="Location 2: ") # Location 2 Label
+            self.loc2box = wx.TextCtrl(panel, style=wx.TE_LEFT) # Location 2 Textbox
+            self.l2usecur_check = wx.CheckBox(panel, label="Use Current                ")
 
-            self.loc1label = wx.StaticText(panel, label="Location 1: ", pos=(10, 85)) # Location 1 Label
-            self.loc1box = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(150, 30), pos=(80, 80)) # Location 1 Textbox
-            self.l1act_check = wx.CheckBox(panel, label="", pos=(230,84))
+            self.loc3label = wx.StaticText(panel, label="Location 3: ") # Location 3 Label
+            self.loc3box = wx.TextCtrl(panel, style=wx.TE_LEFT,) # Location 3 Textbox
+            self.l3usecur_check = wx.CheckBox(panel, label="Use Current                ")
 
-            self.loc2label = wx.StaticText(panel, label="Location 2: ", pos=(10, 115)) # Location 2 Label
-            self.loc2box = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(150, 30), pos=(80, 110)) # Location 2 Textbox
-            self.l2act_check = wx.CheckBox(panel, label="", pos=(230,114))
+            self.emaillabel = wx.StaticText(panel, label="Email: ") # Email Label
+            self.emailbox = wx.TextCtrl(panel, style=wx.TE_LEFT) # Email Textbox
+            self.emailcheck = wx.CheckBox(panel, label="Activate")
 
-            self.loc3label = wx.StaticText(panel, label="Location 3: ", pos=(10, 145)) # Location 3 Label
-            self.loc3box = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(150, 30), pos=(80, 140)) # Location 3 Textbox
-            self.l3act_check = wx.CheckBox(panel, label="", pos=(230,144))
-
-            self.eline2 = wx.StaticLine(panel, pos=(0,179), size=(300, 4), style=wx.LI_HORIZONTAL)
-
-            self.emaillabel = wx.StaticText(panel, label="Email: ", pos=(10, 195)) # Email Label
-            self.emailbox = wx.TextCtrl(panel, style=wx.TE_LEFT, size=(200, 30), pos=(80, 190)) # Email Textbox
-
-            self.eline3 = wx.StaticLine(panel, pos=(0,227), size=(300, 4), style=wx.LI_HORIZONTAL)
-
-            self.applyButton = wx.Button(panel, label="Apply", pos=(10, 235))
-            self.cancelButton = wx.Button(panel, label="Cancel", pos=(100, 235))
+            self.applyButton = wx.Button(panel, label="Apply")
+            self.cancelButton = wx.Button(panel, label="Cancel")
 
             self.Bind(wx.EVT_BUTTON, self.onApply, self.applyButton)
             self.Bind(wx.EVT_BUTTON, self.onClose, self.cancelButton)
-            self.Bind(wx.EVT_CLOSE, self.onClose) # (Allows frame's title-bar close to work)
+            self.Bind(wx.EVT_CLOSE, self.onClose)
 
-            # Disabled controls because no functionality
-            self.l1act_check.Enable(False)
-            self.l2act_check.Enable(False)
-            self.l3act_check.Enable(False)
-            self.emailbox.Enable(False)
+            self.Bind(wx.EVT_CHECKBOX, self.onCheck1, self.l1usecur_check)
+            self.Bind(wx.EVT_CHECKBOX, self.onCheck2, self.l2usecur_check)
+            self.Bind(wx.EVT_CHECKBOX, self.onCheck3, self.l3usecur_check)
+
+            #Sizers!
+            topSizer        = wx.BoxSizer(wx.VERTICAL)
+            apiSizer      = wx.BoxSizer(wx.HORIZONTAL)
+            loc1Sizer   = wx.BoxSizer(wx.HORIZONTAL)
+            loc2Sizer   = wx.BoxSizer(wx.HORIZONTAL)
+            loc3Sizer   = wx.BoxSizer(wx.HORIZONTAL)
+            emailSizer   = wx.BoxSizer(wx.HORIZONTAL)
+            btnSizer        = wx.BoxSizer(wx.HORIZONTAL)
+
+            apiSizer.Add(self.apilabel, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+            apiSizer.Add(self.apibox, 1, wx.ALL|wx.EXPAND, 2)
+
+            loc1Sizer.Add(self.loc1label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+            loc1Sizer.Add(self.loc1box, 1, wx.ALL|wx.EXPAND, 2)
+            loc1Sizer.Add(self.l1usecur_check, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+
+            loc2Sizer.Add(self.loc2label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+            loc2Sizer.Add(self.loc2box, 1, wx.ALL|wx.EXPAND, 2)
+            loc2Sizer.Add(self.l2usecur_check, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+
+            loc3Sizer.Add(self.loc3label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+            loc3Sizer.Add(self.loc3box, 1, wx.ALL|wx.EXPAND, 2)
+            loc3Sizer.Add(self.l3usecur_check, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+
+            emailSizer.Add(self.emaillabel, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+            emailSizer.Add(self.emailbox, 1, wx.ALL|wx.EXPAND, 2)
+            emailSizer.Add(self.emailcheck, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+
+            btnSizer.Add(self.applyButton, 0, wx.ALL, 2)
+            btnSizer.Add(self.cancelButton, 0, wx.ALL, 2)
+
+            topSizer.Add(apiSizer, 0, wx.ALL|wx.EXPAND, 4)
+            topSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+            topSizer.Add(loc1Sizer, 0, wx.ALL|wx.EXPAND, 0)
+            topSizer.Add(loc2Sizer, 0, wx.ALL|wx.EXPAND, 0)
+            topSizer.Add(loc3Sizer, 0, wx.ALL|wx.EXPAND, 0)
+            topSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+            topSizer.Add(emailSizer, 0, wx.ALL|wx.EXPAND, 4)
+            topSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+            topSizer.Add(btnSizer, 0, wx.ALL|wx.CENTER, 5)
+
+            panel.SetSizer(topSizer)
+            topSizer.Fit(self)
 
             self.apibox.SetValue(apikey)
             self.loc1box.SetValue(str(zippy1def))
             self.loc2box.SetValue(str(zippy2def))
             self.loc3box.SetValue(str(zippy3def))
             self.emailbox.SetValue(emailer)
+
+            # Disabled controls because no functionality... yet!
+            if zippy1def == zippy1:
+                self.l1usecur_check.Enable(False)
+            if zippy2def == zippy2:
+                self.l2usecur_check.Enable(False)
+            if zippy3def == zippy3:
+                self.l3usecur_check.Enable(False)
+            self.emailbox.Enable(False)
+            self.emailcheck.Enable(False)
 
             self.CenterOnParent()
             self.GetParent().Enable(False)
@@ -147,6 +191,30 @@ def main():
             self.GetParent().Enable(True)
             self.__eventLoop.Exit()
             self.Destroy()
+
+        def onCheck1(self, event):
+            self.loc1box.SetValue(str(zippy1def))
+            l1_status = self.l1usecur_check.GetValue()
+            if l1_status == True:
+                self.loc1box.SetValue(str(zippy1))
+            elif l1_status == False:
+                self.loc1box.SetValue(str(zippy1def))
+
+        def onCheck2(self, event):
+            self.loc2box.SetValue(str(zippy2def))
+            l2_status = self.l2usecur_check.GetValue()
+            if l2_status == True:
+                self.loc2box.SetValue(str(zippy2))
+            elif l2_status == False:
+                self.loc2box.SetValue(str(zippy2def))
+
+        def onCheck3(self, event):
+            self.loc3box.SetValue(str(zippy3def))
+            l3_status = self.l3usecur_check.GetValue()
+            if l3_status == True:
+                self.loc3box.SetValue(str(zippy3))
+            elif l3_status == False:
+                self.loc3box.SetValue(str(zippy3def))
 
         def onApply(self, event):
             global apikey
@@ -248,8 +316,10 @@ def main():
             topSizer.Add(copySizer, 0, wx.CENTER, 5)
             topSizer.Add(wunderSizer, 0, wx.LEFT, 5)
             topSizer.Add(btnSizer, 0, wx.ALIGN_RIGHT, 5)
+
             panel.SetSizer(topSizer)
             topSizer.Fit(self)
+
             self.CenterOnParent()
             self.GetParent().Enable(False)
             self.Show(True)
