@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # puddle.py
 # Simple Weather App
-# Version v00.00.19
-# Mon 16 Nov 2015 13:50:38 
+# Version v00.00.25
+# Wed 18 Nov 2015 21:33:19 
 # Leigh Burton, lburton@metacache.net
 
 
@@ -12,17 +12,22 @@ from xml.dom.minidom import parse
 import xml.dom.minidom
 import os.path
 import wx
+import webbrowser
 
 
 from ConfigParser import SafeConfigParser
 
+day_button = "res/day_button.png"
+week_button = "res/week_button.png"
 settings_button = "res/settings_button.png"
 refresh_button = "res/refresh_button.png"
 appicon = "res/ficon.ico"
 conffile = "res/config.ini"
 wunderlogo = "res/wlogo.png"
 puddlelogo = "res/plogo.png"
-vinfo = "v00.00.19"
+vinfo = "v00.00.25"
+usezip = ""
+usecity = ""
 zippy1 = ""
 zippy2 = ""
 zippy3 = ""
@@ -33,6 +38,9 @@ apikey = ""
 emailer = ""
 zipcode = ""
 city = ""
+city1 = ""
+city2 = ""
+city3 = ""
 lat = ""
 lon = ""
 temp = ""
@@ -65,7 +73,9 @@ try:
     zippy3 = zippy3def
     namechk3 = zippy3 + ".xml"
 
-    apistring = "http://api.wunderground.com/api/" + apikey + "/conditions/lang:EN/q/"
+    apistring = "http://api.wunderground.com/api/" + apikey + "/conditions/hourly/forecast10day/lang:EN/q/"
+    apistring_hourly = "http://api.wunderground.com/api/" + apikey + "/hourly/lang:EN/q/"
+    apistring_10day = "http://api.wunderground.com/api/" + apikey + "/forecast10day/lang:EN/q/"
 
 except:
     print "Issue with Config file, no defaults loaded."    
@@ -235,7 +245,7 @@ def main():
             try:
                 os.remove(conffile)
             except:
-                print "No previosu config file, creating new one."
+                print "No previous config file, creating new one."
 
             config = SafeConfigParser()
             config.read(conffile)
@@ -331,7 +341,129 @@ def main():
             self.GetParent().Enable(True)
             self.__eventLoop.Exit()
             self.Destroy()
-            
+
+    #####################
+    # Hourly Frame #
+    #####################
+    class HourlyFrame(wx.Frame):
+        ''' AboutFrame launched from puddle '''
+        def __init__(self, parent, id):
+            global usezip
+            global usecity
+            wx.Frame.__init__(self, parent, -1,
+                              title="Puddle: 10 hour forecast for " + usezip,
+                              style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER ^ wx.MINIMIZE_BOX ^ wx.MAXIMIZE_BOX)
+            self.picon = wx.Icon(appicon, wx.BITMAP_TYPE_ICO)
+            self.SetIcon(self.picon)
+            panel = wx.Panel(self, -1)
+
+            topSizer        = wx.BoxSizer(wx.VERTICAL)
+            colSizer        = wx.BoxSizer(wx.HORIZONTAL)
+            hourSizer        = wx.BoxSizer(wx.VERTICAL)
+            condSizer        = wx.BoxSizer(wx.VERTICAL)
+            tempSizer        = wx.BoxSizer(wx.VERTICAL)
+            windSizer        = wx.BoxSizer(wx.VERTICAL)
+            humSizer        = wx.BoxSizer(wx.VERTICAL)
+
+            coltoppersFont = wx.Font(8, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
+
+            self.hourlabel = wx.StaticText(panel, label="Time (Local)")
+            self.hourlabel.SetFont(coltoppersFont)
+
+            self.templabel = wx.StaticText(panel, label="Temperatures")
+            self.templabel.SetFont(coltoppersFont)
+
+            self.condlabel = wx.StaticText(panel, label="Conditions")
+            self.condlabel.SetFont(coltoppersFont)
+
+            self.windlabel = wx.StaticText(panel, label="Wind")
+            self.windlabel.SetFont(coltoppersFont)
+
+            self.humlabel = wx.StaticText(panel, label="Humidity")
+            self.humlabel.SetFont(coltoppersFont)
+
+            hourSizer.Add(self.hourlabel, 0, wx.LEFT, 5)
+            condSizer.Add(self.condlabel, 0, wx.LEFT, 5)
+            tempSizer.Add(self.templabel, 0, wx.LEFT, 5)
+            windSizer.Add(self.windlabel, 0, wx.LEFT, 5)
+            humSizer.Add(self.humlabel, 0, wx.LEFT, 5)
+            try:
+                DOMTree = xml.dom.minidom.parse("datafile_hourly.xml")
+                api_hourlydata = DOMTree.documentElement
+                
+                # Start of actual Weather Details.
+                apideets = api_hourlydata.getElementsByTagName("forecast")
+                i = 0
+                for apidet in apideets:
+                        if i == 10:
+                            break
+                        apihour = apidet.getElementsByTagName('civil')[0]
+                        apimon = apidet.getElementsByTagName('mon_abbrev')[0]
+                        apiday = apidet.getElementsByTagName('mday')[0]
+                        apitempf = apidet.getElementsByTagName('english')[0]
+                        apitempc = apidet.getElementsByTagName('metric')[0]
+                        apiwspdm = apidet.getElementsByTagName('english')[2]
+                        apicond = apidet.getElementsByTagName('condition')[0]
+                        apihum = apidet.getElementsByTagName('humidity')[0]
+                        apiwdir = apidet.getElementsByTagName('dir')[0]
+
+                        hour = apihour.childNodes[0].data + " " + apimon.childNodes[0].data + " " + apiday.childNodes[0].data
+                        cond = apicond.childNodes[0].data
+                        temp = apitempf.childNodes[0].data + " F (" + apitempc.childNodes[0].data + " C)"
+                        wind = apiwdir.childNodes[0].data + " at " + apiwspdm.childNodes[0].data + "MPH"
+                        hum = apihum.childNodes[0].data + "%"
+                        self.lblhour= wx.StaticText(panel, label=hour)
+                        self.lblcond= wx.StaticText(panel, label=cond)
+                        self.lbltemp= wx.StaticText(panel, label=temp)
+                        self.lblwind= wx.StaticText(panel, label=wind)
+                        self.lblhum= wx.StaticText(panel, label=hum)
+
+                        hourSizer.Add(self.lblhour, 0, wx.LEFT, 5)
+                        hourSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+                        condSizer.Add(self.lblcond, 0, wx.LEFT, 5)
+                        condSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+                        tempSizer.Add(self.lbltemp, 0, wx.LEFT, 5)
+                        tempSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+                        windSizer.Add(self.lblwind, 0, wx.LEFT, 5)
+                        windSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+                        humSizer.Add(self.lblhum, 0, wx.LEFT, 5)
+                        humSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+                        i = i + 1
+            except:
+                print "HOURLY HOSED!"
+            os.remove("datafile_hourly.xml")
+
+            self.titlelabel = wx.StaticText(panel, label=usecity + " (" + usezip + ") 10 hour forecast")
+            titleFont = wx.Font(10, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
+            self.titlelabel.SetFont(titleFont)
+
+            self.closeButton = wx.Button(panel, label="Close")
+
+            self.Bind(wx.EVT_BUTTON, self.onClose, self.closeButton)
+            self.Bind(wx.EVT_CLOSE, self.onClose) # (Allows frame's title-bar close to work)
+
+            topSizer.Add(self.titlelabel, 0, wx.LEFT, 7)
+            colSizer.Add(hourSizer, 1, wx.LEFT, 5)
+            colSizer.Add(condSizer, 1, wx.LEFT, 5)
+            colSizer.Add(tempSizer, 1, wx.LEFT, 5)
+            colSizer.Add(windSizer, 1, wx.LEFT, 5)
+            colSizer.Add(humSizer, 1, wx.LEFT, 5)
+            topSizer.Add(colSizer, 1, wx.LEFT|wx.EXPAND, 5)
+            topSizer.Add(self.closeButton, 0, wx.LEFT, 5)
+            panel.SetSizer(topSizer)
+            topSizer.Fit(self)
+
+            self.CenterOnParent()
+            self.GetParent().Enable(False)
+            self.Show(True)
+
+            self.__eventLoop = wx.EventLoop()
+            self.__eventLoop.Run()
+
+        def onClose(self, event):
+            self.GetParent().Enable(True)
+            self.__eventLoop.Exit()
+            self.Destroy()
 
     # Start of GUI happiness
 
@@ -344,6 +476,8 @@ def main():
             global namechk
             refresher = wx.Image(refresh_button, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
             settings = wx.Image(settings_button, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+            dayer = wx.Image(day_button, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+            weeker = wx.Image(week_button, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
 
             wx.Frame.__init__(self, parent, title=title, size=(460,380), style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER) # Init the frame with a size of 460x300 pixels.
             self.Bind(wx.EVT_CLOSE, self.OnClose)
@@ -370,6 +504,7 @@ def main():
             self.m_about = h_menu.Append(wx.ID_ABOUT, "About", "About Puddle.")
             self.m_faq = h_menu.Append(wx.ID_ABOUT, "FAQ / Tips", "FAQ and Tips on Usage.")
             self.Bind(wx.EVT_MENU, self.OnAbout, self.m_about)
+            self.Bind(wx.EVT_MENU, self.onFAQ, self.m_faq)
             menuBar.Append(h_menu, "&Help")
 
             self.SetMenuBar(menuBar)
@@ -379,79 +514,217 @@ def main():
             self.statusbar = self.CreateStatusBar()
 
             img = wx.EmptyImage(50,50)
-            self.eline0 = wx.StaticLine(panel, pos=(0,0), size=(460, 4), style=wx.LI_HORIZONTAL)
 
             # LOCATION 1
-            self.icon1 = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(img), pos=(15, 10))
-            self.line1label1 = wx.StaticText(panel, label="", pos=(80, 10)) # City + Zip
-            self.line2label1 = wx.StaticText(panel, label="", pos=(80, 30)) # Lat/Lon
-            self.line3label1 = wx.StaticText(panel, label="", pos=(80, 50)) # Temp / Humidity
+            self.icon1 = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(img))
+            self.line1label1 = wx.StaticText(panel, label="") # City + Zip
+            self.line2label1 = wx.StaticText(panel, label="") # Lat/Lon
+            self.line3label1 = wx.StaticText(panel, label="") # Temp / Humidity
 
-            self.refresh1 = wx.BitmapButton(panel, -1, refresher, pos=(6, 65)) # Refresh Button
-            self.settings1 = wx.BitmapButton(panel, -1, settings, pos=(41, 65)) #Settings Button
+            self.refresh1 = wx.BitmapButton(panel, 1110, refresher) # Refresh Button
+            self.settings1 = wx.BitmapButton(panel, 1120, settings) #Settings Button
+            self.day1 = wx.BitmapButton(panel, 1130, dayer) # Hourly Forecast Button
+            self.week1 = wx.BitmapButton(panel, 1140, weeker) # Future Forecast Button
 
-            self.line4label1 = wx.StaticText(panel, label="", pos=(80, 70)) # Wind
-            self.line5label1 = wx.StaticText(panel, label="", pos=(80, 90)) # Updated
+            self.line4label1 = wx.StaticText(panel, label="") # Wind
+            self.line5label1 = wx.StaticText(panel, label="") # Updated
 
-            self.eline1 = wx.StaticLine(panel, pos=(0,110), size=(460, 4), style=wx.LI_HORIZONTAL)
-
-            #self.refresh1.Bind(wx.EVT_ENTER_WINDOW, self.rOnMouseOver1) #Hover On Refresh
-            #self.refresh1.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Refresh
-            #self.settings1.Bind(wx.EVT_ENTER_WINDOW, self.sOnMouseOver1) #Hover On Settings
-            #self.settings1.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Settings
             self.Bind(wx.EVT_BUTTON, self.apilookup1, self.refresh1) # Refresh Location
             self.Bind(wx.EVT_BUTTON, self.locset1, self.settings1) # Location Settings
+            self.Bind(wx.EVT_BUTTON, self.cast_hourly, self.day1) # Refresh Location
+            self.Bind(wx.EVT_BUTTON, self.cast_10day, self.week1) # Location Settings
 
             # LOCATION 2
-            self.icon2 = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(img), pos=(15, 120))
-            self.line1label2 = wx.StaticText(panel, label="", pos=(80, 120)) # City + Zip
-            self.line2label2 = wx.StaticText(panel, label="", pos=(80, 140)) # Lat/Lon
-            self.line3label2 = wx.StaticText(panel, label="", pos=(80, 160)) # Temp / Humidity
+            self.icon2 = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(img))
+            self.line1label2 = wx.StaticText(panel, label="") # City + Zip
+            self.line2label2 = wx.StaticText(panel, label="") # Lat/Lon
+            self.line3label2 = wx.StaticText(panel, label="") # Temp / Humidity
 
-            self.refresh2 = wx.BitmapButton(panel, -1, refresher, pos=(6, 175))
-            self.settings2 = wx.BitmapButton(panel, -1, settings, pos=(41, 175))
+            self.refresh2 = wx.BitmapButton(panel, 2110, refresher)
+            self.settings2 = wx.BitmapButton(panel, 2120, settings)
+            self.day2 = wx.BitmapButton(panel, 2130, dayer) # Hourly Forecast Button
+            self.week2 = wx.BitmapButton(panel, 2140, weeker) # Future Forecast Button
 
-            self.line4label2 = wx.StaticText(panel, label="", pos=(80, 180)) # Wind
-            self.line5label2 = wx.StaticText(panel, label="", pos=(80, 200)) # Updated
+            self.line4label2 = wx.StaticText(panel, label="") # Wind
+            self.line5label2 = wx.StaticText(panel, label="") # Updated
 
-            self.eline2 = wx.StaticLine(panel, pos=(0,220), size=(460, 4), style=wx.LI_HORIZONTAL)
-
-            #self.refresh2.Bind(wx.EVT_ENTER_WINDOW, self.rOnMouseOver2) #Hover On Refresh
-            #self.refresh2.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Refresh
-            #self.settings2.Bind(wx.EVT_ENTER_WINDOW, self.sOnMouseOver2) #Hover On Settings
-            #self.settings2.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Settings
             self.Bind(wx.EVT_BUTTON, self.apilookup2, self.refresh2) # give is meaning
             self.Bind(wx.EVT_BUTTON, self.locset2, self.settings2) # give is meaning
+            self.Bind(wx.EVT_BUTTON, self.cast_hourly, self.day2) # Refresh Location
+            self.Bind(wx.EVT_BUTTON, self.cast_10day, self.week2) # Location Settings
 
             # LOCATION 3
-            self.icon3 = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(img), pos=(15, 230))
-            self.line1label3 = wx.StaticText(panel, label="", pos=(80, 230)) # City + Zip
-            self.line2label3 = wx.StaticText(panel, label="", pos=(80, 250)) # Lat/Lon
-            self.line3label3 = wx.StaticText(panel, label="", pos=(80, 270)) # Temp / Humidity
+            self.icon3 = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(img))
+            self.line1label3 = wx.StaticText(panel, label="") # City + Zip
+            self.line2label3 = wx.StaticText(panel, label="") # Lat/Lon
+            self.line3label3 = wx.StaticText(panel, label="") # Temp / Humidity
 
-            self.refresh3 = wx.BitmapButton(panel, -1, refresher, pos=(6, 285))
-            self.settings3 = wx.BitmapButton(panel, -1, settings, pos=(41, 285))
+            self.refresh3 = wx.BitmapButton(panel, 3110, refresher)
+            self.settings3 = wx.BitmapButton(panel, 3120, settings)
+            self.day3 = wx.BitmapButton(panel, 3130, dayer) # Hourly Forecast Button
+            self.week3 = wx.BitmapButton(panel, 3140, weeker) # Future Forecast Button
 
-            self.line4label3 = wx.StaticText(panel, label="", pos=(80, 290)) # Wind
-            self.line5label3 = wx.StaticText(panel, label="", pos=(80, 310)) # Updated
+            self.line4label3 = wx.StaticText(panel, label="") # Wind
+            self.line5label3 = wx.StaticText(panel, label="") # Updated
 
-            self.eline3 = wx.StaticLine(panel, pos=(0,330), size=(460, 4), style=wx.LI_HORIZONTAL)
-
-            #self.refresh3.Bind(wx.EVT_ENTER_WINDOW, self.rOnMouseOver3) #Hover On Refresh
-            #self.refresh3.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Refresh
-            #self.settings3.Bind(wx.EVT_ENTER_WINDOW, self.sOnMouseOver3) #Hover On Settings
-            #self.settings3.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeave) #Hover Off Settings
             self.Bind(wx.EVT_BUTTON, self.apilookup3, self.refresh3) # give is meaning
             self.Bind(wx.EVT_BUTTON, self.locset3, self.settings3) # give is meaning
-        
+            self.Bind(wx.EVT_BUTTON, self.cast_hourly, self.day3) # Refresh Location
+            self.Bind(wx.EVT_BUTTON, self.cast_10day, self.week3) # Location Settings
+
+            #Sizers!
+            topSizer = wx.BoxSizer(wx.VERTICAL)
+
+            midSizer1 = wx.BoxSizer(wx.HORIZONTAL)
+            leftSizer1 = wx.BoxSizer(wx.VERTICAL)
+            centerSizer1 = wx.BoxSizer(wx.VERTICAL)
+            rightSizer1 = wx.BoxSizer(wx.VERTICAL)
+            iconSizer1 = wx.BoxSizer(wx.HORIZONTAL)
+            btn1Sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+            btn2Sizer1 = wx.BoxSizer(wx.VERTICAL)
+
+            midSizer2 = wx.BoxSizer(wx.HORIZONTAL)
+            leftSizer2 = wx.BoxSizer(wx.VERTICAL)
+            centerSizer2 = wx.BoxSizer(wx.VERTICAL)
+            rightSizer2 = wx.BoxSizer(wx.VERTICAL)
+            iconSizer2 = wx.BoxSizer(wx.HORIZONTAL)
+            btn1Sizer2 = wx.BoxSizer(wx.HORIZONTAL)
+            btn2Sizer2 = wx.BoxSizer(wx.VERTICAL)
+
+            midSizer3 = wx.BoxSizer(wx.HORIZONTAL)
+            leftSizer3 = wx.BoxSizer(wx.VERTICAL)
+            centerSizer3 = wx.BoxSizer(wx.VERTICAL)
+            rightSizer3 = wx.BoxSizer(wx.VERTICAL)
+            iconSizer3 = wx.BoxSizer(wx.HORIZONTAL)
+            btn1Sizer3 = wx.BoxSizer(wx.HORIZONTAL)
+            btn2Sizer3 = wx.BoxSizer(wx.VERTICAL)
+
+            # LOCATION1
+            iconSizer1.Add(self.icon1, 0, wx.ALL, 2)
+            btn1Sizer1.Add(self.day1, 0, wx.ALL, 2)
+            btn1Sizer1.Add(self.week1, 0, wx.ALL, 2)
+            leftSizer1.Add(iconSizer1, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 0)
+            leftSizer1.Add(btn1Sizer1, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 0)
+            
+            centerSizer1.Add(self.line1label1, 0, wx.ALL, 2)
+            centerSizer1.Add(self.line2label1, 0, wx.ALL, 2)
+            centerSizer1.Add(self.line3label1, 0, wx.ALL, 2)
+            centerSizer1.Add(self.line4label1, 0, wx.ALL, 2)
+            centerSizer1.Add(self.line5label1, 0, wx.ALL, 2)
+
+            btn2Sizer1.Add(self.refresh1, 0, wx.ALL, 2)
+            btn2Sizer1.Add(self.settings1, 0, wx.ALL, 2)
+            rightSizer1.Add(btn2Sizer1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, 0)
+
+            midSizer1.Add(leftSizer1, 0, wx.ALL, 2)
+            midSizer1.Add(centerSizer1, 1, wx.ALL|wx.EXPAND, 2)
+            midSizer1.Add(rightSizer1, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5)
+
+            # LOCATION2
+            iconSizer2.Add(self.icon2, 0, wx.ALL, 2)
+            btn1Sizer2.Add(self.day2, 0, wx.ALL, 2)
+            btn1Sizer2.Add(self.week2, 0, wx.ALL, 2)
+            leftSizer2.Add(iconSizer2, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 0)
+            leftSizer2.Add(btn1Sizer2, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 0)
+            
+            centerSizer2.Add(self.line1label2, 0, wx.ALL, 2)
+            centerSizer2.Add(self.line2label2, 0, wx.ALL, 2)
+            centerSizer2.Add(self.line3label2, 0, wx.ALL, 2)
+            centerSizer2.Add(self.line4label2, 0, wx.ALL, 2)
+            centerSizer2.Add(self.line5label2, 0, wx.ALL, 2)
+
+            btn2Sizer2.Add(self.refresh2, 0, wx.ALL, 2)
+            btn2Sizer2.Add(self.settings2, 0, wx.ALL, 2)
+            rightSizer2.Add(btn2Sizer2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, 0)
+
+            midSizer2.Add(leftSizer2, 0, wx.ALL, 2)
+            midSizer2.Add(centerSizer2, 1, wx.ALL|wx.EXPAND, 2)
+            midSizer2.Add(rightSizer2, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5)
+
+            # LOCATION3
+            iconSizer3.Add(self.icon3, 0, wx.ALL, 2)
+            btn1Sizer3.Add(self.day3, 0, wx.ALL, 2)
+            btn1Sizer3.Add(self.week3, 0, wx.ALL, 2)
+            leftSizer3.Add(iconSizer3, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 0)
+            leftSizer3.Add(btn1Sizer3, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 0)
+            
+            centerSizer3.Add(self.line1label3, 0, wx.ALL, 2)
+            centerSizer3.Add(self.line2label3, 0, wx.ALL, 2)
+            centerSizer3.Add(self.line3label3, 0, wx.ALL, 2)
+            centerSizer3.Add(self.line4label3, 0, wx.ALL, 2)
+            centerSizer3.Add(self.line5label3, 0, wx.ALL, 2)
+
+            btn2Sizer3.Add(self.refresh3, 0, wx.ALL, 2)
+            btn2Sizer3.Add(self.settings3, 0, wx.ALL, 2)
+            rightSizer3.Add(btn2Sizer3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, 0)
+
+            midSizer3.Add(leftSizer3, 0, wx.ALL, 2)
+            midSizer3.Add(centerSizer3, 1, wx.ALL|wx.EXPAND, 2)
+            midSizer3.Add(rightSizer3, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5)
+
+            topSizer.Add(wx.StaticLine(panel, size=(460, 1)), 0, wx.ALL|wx.EXPAND, 0)
+            topSizer.Add(midSizer1, 0, wx.ALIGN_LEFT|wx.EXPAND, 5)
+            topSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+            topSizer.Add(midSizer2, 0, wx.ALIGN_LEFT|wx.EXPAND, 5)
+            topSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+            topSizer.Add(midSizer3, 0, wx.ALIGN_LEFT|wx.EXPAND, 5)
+            topSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+
             self.apilookup1(zippy1)
             self.apilookup2(zippy2)
             self.apilookup3(zippy3)
 
+            panel.SetSizer(topSizer)
+            topSizer.Fit(self)
 
             panel.Layout()
             self.Show(True) # show shit!
         
+        # hourly function referer
+        def cast_hourly(self,event):
+            global usezip
+            global usecity
+            zip_id = event.GetId()
+            if zip_id == 1130:
+                usecity = city1
+                usezip = zippy1
+            elif zip_id == 2130:
+                usecity = city2
+                usezip = zippy2
+            elif zip_id == 3130:
+                usecity = city3
+                usezip = zippy3
+            hourlyfetch = str(apistring_hourly) + str(usezip + ".xml")
+            hourlygrab = urllib2.urlopen(hourlyfetch)
+            hourlyxml = hourlygrab.read()
+            with open("datafile_hourly.xml", 'wb') as hourlyfile:
+                hourlyfile.write(hourlyxml)
+                hourlyfile.close()
+            dialog = HourlyFrame(self, -1)
+            
+
+        # Temporary 10 Day function
+        def cast_10day(self,event):
+            zip_id = event.GetId()
+            if zip_id == 1140:
+                usecity = city1
+                usezip = zippy1
+            elif zip_id == 2140:
+                usecity = city2
+                usezip = zippy2
+            elif zip_id == 3140:
+                usecity = city3
+                usezip = zippy3            
+            dlg = wx.MessageDialog(self, 
+                "10 Day Forecast for " + usecity + " (" + usezip + ") unavailable.\nFeature coming soon!",
+                "10 Day Forecast not available", wx.OK|wx.ICON_QUESTION)
+            result = dlg.ShowModal()
+            dlg.Destroy()
+
+        def onFAQ(self, event):
+            faq_href = "http://www.metacache.net/pudle_faq.html"
+            webbrowser.open(faq_href)
+
         # On-Hover functions for the refresh and settings buttons
         def rOnMouseOver(self,event):
             self.statusbar.SetStatusText('Refresh the weather data for this location')
@@ -567,7 +840,7 @@ def main():
             global zippy1
             global namechk1
             global zipcode
-            global city
+            global city1
             global lat
             global lon
             global wind
@@ -647,7 +920,7 @@ def main():
             global zippy2
             global namechk2
             global zipcode
-            global city
+            global city2
             global lat
             global lon
             global wind
@@ -726,7 +999,7 @@ def main():
             global zippy3
             global namechk3
             global zipcode
-            global city
+            global city3
             global lat
             global lon
             global wind
@@ -740,65 +1013,65 @@ def main():
             else:
                 namechk3 = str(zippy3 + ".xml") 
 
-            try:
-                apifetch = str(apistring) + str(namechk3)
-                apigrab = urllib2.urlopen(apifetch)
-                apixml = apigrab.read()
-                with open("datafile3.xml", 'wb') as newfile:
-                    newfile.write(apixml)
-                    newfile.close()
-                DOMTree = xml.dom.minidom.parse("datafile3.xml")
-                apidata = DOMTree.documentElement
+            #try:
+            apifetch = str(apistring) + str(namechk3)
+            apigrab = urllib2.urlopen(apifetch)
+            apixml = apigrab.read()
+            with open("datafile3.xml", 'wb') as newfile:
+                newfile.write(apixml)
+                newfile.close()
+            DOMTree = xml.dom.minidom.parse("datafile3.xml")
+            apidata = DOMTree.documentElement
 
-                # Start of pull for name + location.
-                apilocs = apidata.getElementsByTagName("display_location")
-                for apiloc in apilocs:
-                    apizip3 = apiloc.getElementsByTagName('zip')[0]
-                    apicity3 = apiloc.getElementsByTagName('full')[0]
-                    apilat3 = apiloc.getElementsByTagName('latitude')[0]
-                    apilong3 = apiloc.getElementsByTagName('longitude')[0]
-                    
-                    zipcode3 = apizip3.childNodes[0].data
-                    city3 = apicity3.childNodes[0].data
-                    lat3 = apilat3.childNodes[0].data
-                    lon3 = apilong3.childNodes[0].data
-                    break
+            # Start of pull for name + location.
+            apilocs = apidata.getElementsByTagName("display_location")
+            for apiloc in apilocs:
+                apizip3 = apiloc.getElementsByTagName('zip')[0]
+                apicity3 = apiloc.getElementsByTagName('full')[0]
+                apilat3 = apiloc.getElementsByTagName('latitude')[0]
+                apilong3 = apiloc.getElementsByTagName('longitude')[0]
                 
-                # Start of actual Weather Details.
-                apideets = apidata.getElementsByTagName("current_observation")
-                for apidet in apideets:
-                    apitemp3 = apidet.getElementsByTagName('temperature_string')[0]
-                    apiwind3 = apidet.getElementsByTagName('wind_string')[0]
-                    apifeels3 = apidet.getElementsByTagName('feelslike_string')[0]
-                    apiiconurl3 = apidet.getElementsByTagName('icon_url')[0]
-                    apiupdated3 = apidet.getElementsByTagName('observation_time')[0]
-                    apitime3 = apidet.getElementsByTagName('local_time_rfc822')[0]
+                zipcode3 = apizip3.childNodes[0].data
+                city3 = apicity3.childNodes[0].data
+                lat3 = apilat3.childNodes[0].data
+                lon3 = apilong3.childNodes[0].data
+                break
+            
+            # Start of actual Weather Details.
+            apideets = apidata.getElementsByTagName("current_observation")
+            for apidet in apideets:
+                apitemp3 = apidet.getElementsByTagName('temperature_string')[0]
+                apiwind3 = apidet.getElementsByTagName('wind_string')[0]
+                apifeels3 = apidet.getElementsByTagName('feelslike_string')[0]
+                apiiconurl3 = apidet.getElementsByTagName('icon_url')[0]
+                apiupdated3 = apidet.getElementsByTagName('observation_time')[0]
+                apitime3 = apidet.getElementsByTagName('local_time_rfc822')[0]
 
-                    temp3 = apitemp3.childNodes[0].data
-                    wind3 = apiwind3.childNodes[0].data
-                    feels3 = apifeels3.childNodes[0].data
-                    giffy3 = apiiconurl3.childNodes[0].data
-                    uptime3 = apiupdated3.childNodes[0].data
-                    localtime3 = apitime3.childNodes[0].data
+                temp3 = apitemp3.childNodes[0].data
+                wind3 = apiwind3.childNodes[0].data
+                feels3 = apifeels3.childNodes[0].data
+                giffy3 = apiiconurl3.childNodes[0].data
+                uptime3 = apiupdated3.childNodes[0].data
+                localtime3 = apitime3.childNodes[0].data
 
-                    icongrab = urllib2.urlopen(giffy3)
-                    iconfetch = icongrab.read()
-                    with open("icon3.gif", 'wb') as iconfile:
-                        iconfile.write(iconfetch)
-                        iconfile.close()
-                    
-                    self.line1label3.SetLabel(str(city3) + " (" + str(zipcode3) + ")")
-                    self.line2label3.SetLabel("Lat: " + str(lat3) + " Long: " + str(lon3))
-                    self.line3label3.SetLabel("Temp: " + str(temp3) + ", Feels like: " + str(feels3))
-                    self.line4label3.SetLabel("Wind " + str(wind3))
-                    self.line5label3.SetLabel(str(uptime3))
-                    img = wx.Image("icon3.gif", wx.BITMAP_TYPE_GIF)
-                    self.icon3.SetBitmap(wx.BitmapFromImage(img))
-                    os.remove("icon3.gif")
-                    os.remove("datafile3.xml")
-                    break
-            except:
-                print "No Location Data, config file missing?"
+                icongrab = urllib2.urlopen(giffy3)
+                iconfetch = icongrab.read()
+                with open("icon3.gif", 'wb') as iconfile:
+                    iconfile.write(iconfetch)
+                    iconfile.close()
+                
+                self.line1label3.SetLabel(str(city3) + " (" + str(zipcode3) + ")")
+                self.line2label3.SetLabel("Lat: " + str(lat3) + " Long: " + str(lon3))
+                self.line3label3.SetLabel("Temp: " + str(temp3) + ", Feels like: " + str(feels3))
+                self.line4label3.SetLabel("Wind " + str(wind3))
+                self.line5label3.SetLabel(str(uptime3))
+                img = wx.Image("icon3.gif", wx.BITMAP_TYPE_GIF)
+                self.icon3.SetBitmap(wx.BitmapFromImage(img))
+                os.remove("icon3.gif")
+                os.remove("datafile3.xml")
+                break
+            #except:
+            #    print "No Location Data, config file missing?"
 
         def OnClose(self,event):
             dlg = wx.MessageDialog(self, 
