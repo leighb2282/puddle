@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # puddle.py
 # Simple Weather App
-# Version v00.00.25
-# Wed 18 Nov 2015 21:33:19 
+# Version v00.00.26
+# Sun 22 Nov 2015 17:08:29 
 # Leigh Burton, lburton@metacache.net
 
 
@@ -25,7 +25,7 @@ appicon = "res/ficon.ico"
 conffile = "res/config.ini"
 wunderlogo = "res/wlogo.png"
 puddlelogo = "res/plogo.png"
-vinfo = "v00.00.25"
+vinfo = "v00.00.26"
 usezip = ""
 usecity = ""
 zippy1 = ""
@@ -36,19 +36,12 @@ zippy2def = ""
 zippy3def = ""
 apikey = ""
 emailer = ""
-zipcode = ""
-city = ""
 city1 = ""
 city2 = ""
 city3 = ""
-lat = ""
-lon = ""
-temp = ""
-wind = ""
-feels = ""
-giffy = ""
-uptime = ""
-localtime = ""
+apistring = "http://api"
+apistring_hourly = "http://api"
+apistring_10day = "http://api"
 
 ##############################
 # Default Locations Settings #
@@ -73,7 +66,7 @@ try:
     zippy3 = zippy3def
     namechk3 = zippy3 + ".xml"
 
-    apistring = "http://api.wunderground.com/api/" + apikey + "/conditions/hourly/forecast10day/lang:EN/q/"
+    apistring = "http://api.wunderground.com/api/" + apikey + "/conditions/lang:EN/q/"
     apistring_hourly = "http://api.wunderground.com/api/" + apikey + "/hourly/lang:EN/q/"
     apistring_10day = "http://api.wunderground.com/api/" + apikey + "/forecast10day/lang:EN/q/"
 
@@ -296,7 +289,8 @@ def main():
             wlogo = wx.EmptyImage(200,47)
             wlogo = wx.Image(wunderlogo, wx.BITMAP_TYPE_PNG)
             self.wunder = wx.StaticBitmap(panel, wx.ID_ANY, wx.BitmapFromImage(wlogo))
-
+            self.wunderclabel = wx.StaticText(panel, label="Weather Underground is a registered trademark of The Weather Channel,\nLLC. both in the United States and internationally.\nThe Weather Underground Logo is a trademark of Weather Underground, LLC.")
+            self.wunderclabel.SetFont(copyFont)
             self.closeButton = wx.Button(panel, label="Close", pos=(210, 235))
 
             self.Bind(wx.EVT_BUTTON, self.onClose, self.closeButton)
@@ -309,6 +303,7 @@ def main():
             blurb2Sizer   = wx.BoxSizer(wx.VERTICAL)
             copySizer   = wx.BoxSizer(wx.HORIZONTAL)
             wunderSizer   = wx.BoxSizer(wx.HORIZONTAL)
+            wundercSizer   = wx.BoxSizer(wx.HORIZONTAL)
             btnSizer        = wx.BoxSizer(wx.HORIZONTAL)
 
             iconSizer.Add(self.pudd, 0, wx.ALL, 5)
@@ -317,6 +312,7 @@ def main():
             blurb2Sizer.Add(self.blurb2label, 0, wx.ALL, 0)
             copySizer.Add(self.copyrlabel, 0, wx.ALL, 5)
             wunderSizer.Add(self.wunder, 0, wx.ALL, 5)
+            wundercSizer.Add(self.wunderclabel, 0, wx.ALL, 5)
             btnSizer.Add(self.closeButton, 0, wx.ALL, 5)
 
             topSizer.Add(iconSizer, 0, wx.CENTER)
@@ -325,6 +321,7 @@ def main():
             topSizer.Add(blurb2Sizer, 0, wx.CENTER, 5)
             topSizer.Add(copySizer, 0, wx.CENTER, 5)
             topSizer.Add(wunderSizer, 0, wx.LEFT, 5)
+            topSizer.Add(wundercSizer, 0, wx.LEFT, 5)
             topSizer.Add(btnSizer, 0, wx.ALIGN_RIGHT, 5)
 
             panel.SetSizer(topSizer)
@@ -387,11 +384,17 @@ def main():
             tempSizer.Add(self.templabel, 0, wx.LEFT, 5)
             windSizer.Add(self.windlabel, 0, wx.LEFT, 5)
             humSizer.Add(self.humlabel, 0, wx.LEFT, 5)
+
+            hourSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+            condSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+            tempSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+            windSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+            humSizer.Add(wx.StaticLine(panel), 0, wx.ALL|wx.EXPAND, 0)
+
             try:
                 DOMTree = xml.dom.minidom.parse("datafile_hourly.xml")
                 api_hourlydata = DOMTree.documentElement
                 
-                # Start of actual Weather Details.
                 apideets = api_hourlydata.getElementsByTagName("forecast")
                 i = 0
                 for apidet in apideets:
@@ -449,7 +452,7 @@ def main():
             colSizer.Add(windSizer, 1, wx.LEFT, 5)
             colSizer.Add(humSizer, 1, wx.LEFT, 5)
             topSizer.Add(colSizer, 1, wx.LEFT|wx.EXPAND, 5)
-            topSizer.Add(self.closeButton, 0, wx.LEFT, 5)
+            topSizer.Add(self.closeButton, 0, wx.RIGHT, 5)
             panel.SetSizer(topSizer)
             topSizer.Fit(self)
 
@@ -501,10 +504,13 @@ def main():
   
             # Define the Help Menu
             h_menu = wx.Menu()    
-            self.m_about = h_menu.Append(wx.ID_ABOUT, "About", "About Puddle.")
-            self.m_faq = h_menu.Append(wx.ID_ABOUT, "FAQ / Tips", "FAQ and Tips on Usage.")
-            self.Bind(wx.EVT_MENU, self.OnAbout, self.m_about)
-            self.Bind(wx.EVT_MENU, self.onFAQ, self.m_faq)
+            self.e_about = h_menu.Append(wx.ID_ABOUT, "About", "About Puddle.")
+            self.e_faq = h_menu.Append(wx.ID_ANY, "FAQ / Tips", "FAQ and Tips on Usage.")
+
+            
+
+            self.Bind(wx.EVT_MENU, self.onFAQ, self.e_faq)
+            self.Bind(wx.EVT_MENU, self.OnAbout, self.e_about)
             menuBar.Append(h_menu, "&Help")
 
             self.SetMenuBar(menuBar)
@@ -765,16 +771,6 @@ def main():
         #Location 1 Settings Button
         def locset1(self,event):
             global zippy1
-            global namechk1
-            global zipcode
-            global city
-            global lat
-            global lon
-            global wind
-            global feels
-            global giffy
-            global uptime
-            global localtime
             dlg1 = wx.TextEntryDialog(self, 
                 "ZIP (ex:94101) or Country/Loc (ex: GB/Chelsea)",
                 "Please enter a Location using the following formats", zippy1)
@@ -789,16 +785,6 @@ def main():
         #Location 2 Settings Button
         def locset2(self,event):
             global zippy2
-            global namechk2
-            global zipcode
-            global city
-            global lat
-            global lon
-            global wind
-            global feels
-            global giffy
-            global uptime
-            global localtime
             dlg2 = wx.TextEntryDialog(self, 
                 "ZIP (ex:94101) or Country/Loc (ex: GB/Chelsea)",
                 "Please enter a Location using the following formats", zippy2)
@@ -813,16 +799,6 @@ def main():
         #Location 3 Settings Button
         def locset3(self,event):
             global zippy3
-            global namechk3
-            global zipcode
-            global city
-            global lat
-            global lon
-            global wind
-            global feels
-            global giffy
-            global uptime
-            global localtime
             dlg3 = wx.TextEntryDialog(self, 
                 "ZIP (ex:94101) or Country/Loc (ex: GB/Chelsea)",
                 "Please enter a Location using the following formats", zippy3)
@@ -839,16 +815,7 @@ def main():
         def apilookup1(self,event):
             global zippy1
             global namechk1
-            global zipcode
             global city1
-            global lat
-            global lon
-            global wind
-            global feels
-            global giffy
-            global uptime
-            global localtime
-            global apikey
 
             if str(zippy1) == "":
                 namechk1 = str(zippy1def + ".xml")
@@ -919,15 +886,7 @@ def main():
         def apilookup2(self,event):
             global zippy2
             global namechk2
-            global zipcode
             global city2
-            global lat
-            global lon
-            global wind
-            global feels
-            global giffy
-            global uptime
-            global localtime
 
             if str(zippy2) == "":
                 namechk2 = str(zippy2def + ".xml")
@@ -998,80 +957,72 @@ def main():
         def apilookup3(self,event):
             global zippy3
             global namechk3
-            global zipcode
             global city3
-            global lat
-            global lon
-            global wind
-            global feels
-            global giffy
-            global uptime
-            global localtime
 
             if str(zippy3) == "":
                 namechk3 = str(zippy3def + ".xml")
             else:
                 namechk3 = str(zippy3 + ".xml") 
 
-            #try:
-            apifetch = str(apistring) + str(namechk3)
-            apigrab = urllib2.urlopen(apifetch)
-            apixml = apigrab.read()
-            with open("datafile3.xml", 'wb') as newfile:
-                newfile.write(apixml)
-                newfile.close()
-            DOMTree = xml.dom.minidom.parse("datafile3.xml")
-            apidata = DOMTree.documentElement
+            try:
+                apifetch = str(apistring) + str(namechk3)
+                apigrab = urllib2.urlopen(apifetch)
+                apixml = apigrab.read()
+                with open("datafile3.xml", 'wb') as newfile:
+                    newfile.write(apixml)
+                    newfile.close()
+                DOMTree = xml.dom.minidom.parse("datafile3.xml")
+                apidata = DOMTree.documentElement
 
-            # Start of pull for name + location.
-            apilocs = apidata.getElementsByTagName("display_location")
-            for apiloc in apilocs:
-                apizip3 = apiloc.getElementsByTagName('zip')[0]
-                apicity3 = apiloc.getElementsByTagName('full')[0]
-                apilat3 = apiloc.getElementsByTagName('latitude')[0]
-                apilong3 = apiloc.getElementsByTagName('longitude')[0]
+                # Start of pull for name + location.
+                apilocs = apidata.getElementsByTagName("display_location")
+                for apiloc in apilocs:
+                    apizip3 = apiloc.getElementsByTagName('zip')[0]
+                    apicity3 = apiloc.getElementsByTagName('full')[0]
+                    apilat3 = apiloc.getElementsByTagName('latitude')[0]
+                    apilong3 = apiloc.getElementsByTagName('longitude')[0]
+                    
+                    zipcode3 = apizip3.childNodes[0].data
+                    city3 = apicity3.childNodes[0].data
+                    lat3 = apilat3.childNodes[0].data
+                    lon3 = apilong3.childNodes[0].data
+                    break
                 
-                zipcode3 = apizip3.childNodes[0].data
-                city3 = apicity3.childNodes[0].data
-                lat3 = apilat3.childNodes[0].data
-                lon3 = apilong3.childNodes[0].data
-                break
-            
-            # Start of actual Weather Details.
-            apideets = apidata.getElementsByTagName("current_observation")
-            for apidet in apideets:
-                apitemp3 = apidet.getElementsByTagName('temperature_string')[0]
-                apiwind3 = apidet.getElementsByTagName('wind_string')[0]
-                apifeels3 = apidet.getElementsByTagName('feelslike_string')[0]
-                apiiconurl3 = apidet.getElementsByTagName('icon_url')[0]
-                apiupdated3 = apidet.getElementsByTagName('observation_time')[0]
-                apitime3 = apidet.getElementsByTagName('local_time_rfc822')[0]
+                # Start of actual Weather Details.
+                apideets = apidata.getElementsByTagName("current_observation")
+                for apidet in apideets:
+                    apitemp3 = apidet.getElementsByTagName('temperature_string')[0]
+                    apiwind3 = apidet.getElementsByTagName('wind_string')[0]
+                    apifeels3 = apidet.getElementsByTagName('feelslike_string')[0]
+                    apiiconurl3 = apidet.getElementsByTagName('icon_url')[0]
+                    apiupdated3 = apidet.getElementsByTagName('observation_time')[0]
+                    apitime3 = apidet.getElementsByTagName('local_time_rfc822')[0]
 
-                temp3 = apitemp3.childNodes[0].data
-                wind3 = apiwind3.childNodes[0].data
-                feels3 = apifeels3.childNodes[0].data
-                giffy3 = apiiconurl3.childNodes[0].data
-                uptime3 = apiupdated3.childNodes[0].data
-                localtime3 = apitime3.childNodes[0].data
+                    temp3 = apitemp3.childNodes[0].data
+                    wind3 = apiwind3.childNodes[0].data
+                    feels3 = apifeels3.childNodes[0].data
+                    giffy3 = apiiconurl3.childNodes[0].data
+                    uptime3 = apiupdated3.childNodes[0].data
+                    localtime3 = apitime3.childNodes[0].data
 
-                icongrab = urllib2.urlopen(giffy3)
-                iconfetch = icongrab.read()
-                with open("icon3.gif", 'wb') as iconfile:
-                    iconfile.write(iconfetch)
-                    iconfile.close()
-                
-                self.line1label3.SetLabel(str(city3) + " (" + str(zipcode3) + ")")
-                self.line2label3.SetLabel("Lat: " + str(lat3) + " Long: " + str(lon3))
-                self.line3label3.SetLabel("Temp: " + str(temp3) + ", Feels like: " + str(feels3))
-                self.line4label3.SetLabel("Wind " + str(wind3))
-                self.line5label3.SetLabel(str(uptime3))
-                img = wx.Image("icon3.gif", wx.BITMAP_TYPE_GIF)
-                self.icon3.SetBitmap(wx.BitmapFromImage(img))
-                os.remove("icon3.gif")
-                os.remove("datafile3.xml")
-                break
-            #except:
-            #    print "No Location Data, config file missing?"
+                    icongrab = urllib2.urlopen(giffy3)
+                    iconfetch = icongrab.read()
+                    with open("icon3.gif", 'wb') as iconfile:
+                        iconfile.write(iconfetch)
+                        iconfile.close()
+                    
+                    self.line1label3.SetLabel(str(city3) + " (" + str(zipcode3) + ")")
+                    self.line2label3.SetLabel("Lat: " + str(lat3) + " Long: " + str(lon3))
+                    self.line3label3.SetLabel("Temp: " + str(temp3) + ", Feels like: " + str(feels3))
+                    self.line4label3.SetLabel("Wind " + str(wind3))
+                    self.line5label3.SetLabel(str(uptime3))
+                    img = wx.Image("icon3.gif", wx.BITMAP_TYPE_GIF)
+                    self.icon3.SetBitmap(wx.BitmapFromImage(img))
+                    os.remove("icon3.gif")
+                    os.remove("datafile3.xml")
+                    break
+            except:
+                print "No Location Data, config file missing?"
 
         def OnClose(self,event):
             dlg = wx.MessageDialog(self, 
