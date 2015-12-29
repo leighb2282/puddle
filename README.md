@@ -18,7 +18,7 @@ Future Features:
 
 ![alt tag](http://metacache.net/images/puddle_v_latest.png) ![alt tag](http://metacache.net/images/puddle_hourly_forecast.png)
 
-You can sign up for a (http://www.wunderground.com/weather/api/ "Weather Underground developer key) (which is what I am using, more specifically the Cumulus Developer plan) which allows you to do 10 API pulls in 1 minute, their data is updated roughly every 10 - 15 minutes so this is not a big deal breaker (at least for me)
+You can sign up for a (http://www.wunderground.com/weather/api/ "Weather Underground developer key) (which is what I am using, more specifically the Cumulus Developer plan) which allows you to do 10 API pulls in 1 minute, their data is updated roughly every 10 - 15 minutes so this is not a big deal breaker (at least for me), once you have signed up you can add your API key to config.ini.
 
 ![alt tag](http://metacache.net/images/wundergroundLogo_4c_horz.png)
 
